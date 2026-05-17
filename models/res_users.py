@@ -10,16 +10,15 @@ class ResUsers(models.Model):
     _inherit = "res.users"
 
     def write(self, vals):
-        """
-        Overridden write method for the ResUsers model.
-        Ensures that hidden menus remain hidden after modification.
-        """
         res = super(ResUsers, self).write(vals)
         for user in self:
-            # Link hidden menus to the user
-            for menu in user.hide_menu_ids:
-                menu.write({"restrict_user_ids": [fields.Command.link(user.id)]})
-            # Handle menus that have been unlinked (removed from the hidden list)
+            if user.hide_menu_ids:
+                for menu in user.hide_menu_ids:
+                    if user.id not in menu.restrict_user_ids.ids:
+                        menu.write(
+                            {"restrict_user_ids": [fields.Command.link(user.id)]}
+                        )
+
             previous_menus = self.env["ir.ui.menu"].search(
                 [("restrict_user_ids", "in", [user.id])]
             )
@@ -45,7 +44,8 @@ class ResUsers(models.Model):
         help="Select menu items to be hidden for this user.",
     )
     is_admin = fields.Boolean(
-        compute="_compute_get_is_admin", help="Indicates whether the user is an admin.",
+        compute="_compute_get_is_admin",
+        help="Indicates whether the user is an admin.",
     )
 
 
